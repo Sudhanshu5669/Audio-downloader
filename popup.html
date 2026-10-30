@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OmniAudio Downloader & Recorder</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18V5l12-2v13" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="6" cy="18" r="3" fill="currentColor"/>
+            <circle cx="18" cy="16" r="3" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>OmniAudio</h1>
+          <span class="page-title-preview" id="pageTitle" title="Current page">Detecting tab...</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btnDownloadBest" class="btn-best" title="Download the highest quality stream on this page" style="display: none;">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <span>Best Quality</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="detected">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+          <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+        </svg>
+        <span>Detected Audio</span>
+        <span class="badge" id="detectedCount">0</span>
+      </button>
+      <button class="nav-tab" data-tab="recorder">
+        <span class="record-pulse-dot" id="tabRecordDot"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="22"></line>
+        </svg>
+        <span>Live Recorder</span>
+      </button>
+    </nav>
+
+    <!-- TAB 1: Detected Audio -->
+    <main id="tabDetected" class="tab-content active">
+      <!-- Controls Bar -->
+      <div class="controls-bar" id="controlsBar">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Search tracks...">
+        </div>
+        <div class="controls-right">
+          <label class="filter-toggle" title="Hide sound effects and UI clicks smaller than 100KB">
+            <input type="checkbox" id="chkFilterSmall" checked>
+            <span>&gt;100KB</span>
+          </label>
+          <button id="btnDownloadAll" class="btn-subtle" title="Download all detected tracks">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>All</span>
+          </button>
+          <button id="btnClearList" class="btn-icon" title="Clear detected list">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Format Filter Chips -->
+      <div class="format-chips" id="formatChips">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="mp3">MP3</button>
+        <button class="chip" data-filter="wav">WAV</button>
+        <button class="chip" data-filter="flac">FLAC</button>
+        <button class="chip" data-filter="m4a">M4A</button>
+        <button class="chip" data-filter="webm">WEBM</button>
+      </div>
+
+      <!-- Track List Container -->
+      <div class="track-list" id="trackList">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
+          </svg>
+        </div>
+        <h3>No Audio Detected Yet</h3>
+        <p>Play audio or video on this page to capture streams automatically, or use the <strong>Live Recorder</strong> tab to record any client-side sound!</p>
+        <button id="btnSwitchToRecorder" class="btn-primary-compact">Open Live Recorder</button>
+      </div>
+    </main>
+
+    <!-- TAB 2: Live Recorder -->
+    <main id="tabRecorder" class="tab-content">
+      <div class="recorder-panel">
+        <!-- Status Card -->
+        <div class="recorder-status-card" id="recorderStatusCard">
+          <div class="status-indicator-row">
+            <span class="status-badge" id="recorderBadge">Ready</span>
+            <span class="timer-display" id="recorderTimer">00:00</span>
+          </div>
+
+          <!-- Live Audio VU Visualizer Bars -->
+          <div class="visualizer-container" id="visualizer">
+            <!-- 20 dynamic audio bars generated in JS -->
+          </div>
+
+          <p class="passthrough-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            Audio will continue playing through your speakers while recording.
+          </p>
+        </div>
+
+        <!-- Format Selection -->
+        <div class="format-selection-group">
+          <label class="section-label">Highest Quality Capture Format</label>
+          <div class="format-cards">
+            <label class="format-option-card">
+              <input type="radio" name="recordFormat" value="wav" checked>
+              <div class="option-content">
+                <div class="option-header">
+                  <span class="format-name">Lossless WAV (PCM)</span>
+                  <span class="tag-lossless">Lossless</span>
+                </div>
+                <div class="option-desc">Studio 48 kHz / 16-bit uncompressed audio. 100% exact fidelity.</div>
+              </div>
+            </label>
+
+            <label class="format-option-card">
+              <input type="radio" name="recordFormat" value="webm">
+              <div class="option-content">
+                <div class="option-header">
+                  <span class="format-name">High-Bitrate Opus (320k)</span>
+                  <span class="tag-hifi">Compact</span>
+                </div>
+                <div class="option-desc">320 kbps Opus WebM audio. Audiophile grade with smaller file size.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Recording Action Buttons -->
+        <div class="recorder-actions">
+          <button id="btnToggleRecording" class="btn-record-main">
+            <span class="record-btn-icon"></span>
+            <span id="btnRecordText">Start Recording Tab Audio</span>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Audio Preview Bar (Fixed) -->
+    <div class="audio-player-bar" id="audioPlayerBar" style="display: none;">
+      <div class="player-info">
+        <span class="player-title" id="playerTitle">Playing preview...</span>
+        <span class="player-time" id="playerTime">0:00 / 0:00</span>
+      </div>
+      <div class="player-controls">
+        <button id="btnPlayerPlayPause" class="btn-player-action">
+          <svg id="iconPlay" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <svg id="iconPause" viewBox="0 0 24 24" fill="currentColor" style="display: none;"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+        </button>
+        <input type="range" id="playerSeek" class="player-slider" min="0" max="100" value="0">
+        <button id="btnPlayerClose" class="btn-player-close" title="Close preview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <audio id="previewAudioElement" preload="none"></audio>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
